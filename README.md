@@ -1,10 +1,5 @@
-aadeque
-=======
-
-Another array deque
-
-Overview
---------
+aadeque: Another array deque
+============================
 
 An array deque is a dynamic array with fast insertion and deletion in both ends.
 
@@ -12,7 +7,7 @@ It can be used much like a dynamic array and as a FIFO queue. It is implemented 
 
 The implementation consists of a single `.h` file of standard C code. It compiles cleanly with `-Wall -pedantic`. All functions are small and declared
 `static inline`. This design has the benefit that it's easy to use (just
-one fileto include) and that any unused functions will not take up space in the
+one file to include) and that any unused functions will not take up space in the
 executable. This design also allows tweaking, by defining some macros. See
 *Tweaking macros* below.
 
@@ -23,51 +18,106 @@ deque (for offset, length, capacity and the contents itself).
 Usage
 -----
 
-The type of an array deque is `aadeque_t`. It's a struct. The values are of type
+``` C
+#include "aadeque.h"
+```
+
+The type of an array deque is `aadeque_t`. The values are of type
 `AADEQUE_VALUE_TYPE` which is `void *` by default, but can be of defined to any
 type you want. See *Tweaking macros* below.
 
+Create, destroy, get, set, length
+---------------------------------
+
 Functions for creating and freeing, checking the length, accessing elements by
-index and replacing elements by index:
+index and replacing elements by index. These are all constant time operations.
 
 ``` C
-static inline aadeque_t *aadeque_create_empty(void);
-static inline void aadeque_destroy(aadeque_t *a);
-static inline unsigned int aadeque_len(aadeque_t *a);
-static inline AADEQUE_VALUE_TYPE aadeque_get(aadeque_t *a, unsigned int i);
-static inline void aadeque_set(aadeque_t *a, unsigned int i,
-                               AADEQUE_VALUE_TYPE value);
+static inline aadeque_t *
+aadeque_create_empty(void);
+
+static inline void
+aadeque_destroy(aadeque_t *a);
+
+static inline unsigned int
+aadeque_len(aadeque_t *a);
+
+static inline AADEQUE_VALUE_TYPE
+aadeque_get(aadeque_t *a, unsigned int i);
+
+static inline void
+aadeque_set(aadeque_t *a, unsigned int i, AADEQUE_VALUE_TYPE value);
 ```
 
-The basic functions for adding and deleting elements in the beginning and the
-end of the array deque are `unshift`, `shift`, `push` and `pop`.
+Push, pop, shift, unshift
+-------------------------
+
+The basic operations of an array deque, i.e. double ended queue, for inserting
+and deleting elements in both ends. These are amortized O(1).
 
 ``` C
-static inline void aadeque_unshift(aadeque_t **aptr, AADEQUE_VALUE_TYPE value);
-static inline AADEQUE_VALUE_TYPE aadeque_shift(aadeque_t **aptr);
-static inline void aadeque_push(aadeque_t **aptr, AADEQUE_VALUE_TYPE value);
-static inline AADEQUE_VALUE_TYPE aadeque_pop(aadeque_t **aptr);
+static inline void
+aadeque_unshift(aadeque_t **aptr, AADEQUE_VALUE_TYPE value);
+
+static inline AADEQUE_VALUE_TYPE
+aadeque_shift(aadeque_t **aptr);
+
+static inline void
+aadeque_push(aadeque_t **aptr, AADEQUE_VALUE_TYPE value);
+
+static inline AADEQUE_VALUE_TYPE
+aadeque_pop(aadeque_t **aptr);
 ```
 
 These take a pointer to a pointer to the array deque, because they may need to
 reallocate it and thus change the location of the array deque in memory.
 
-To avoid repeated use of push, pop, shift and unshift, there are functions that
-add and delete multiple elements at once. The `aadeque_make_space_` functions
-grow the array deque by "inserting" undefined values in the beginning and the
-end respectively.
+Appending and prepending
+------------------------
 
 ``` C
-static inline void aadeque_delete_last_n(aadeque_t **aptr, unsigned int n);
-static inline void aadeque_delete_first_n(aadeque_t **aptr, unsigned int n);
-static inline void aadeque_make_space_after(aadeque_t **aptr, unsigned int n);
-static inline void aadeque_make_space_before(aadeque_t **aptr, unsigned int n);
+static inline aadeque_t *
+aadeque_append(aadeque_t *a1, aadeque_t *a2);
+
+static inline aadeque_t *
+aadque_prepend(aadeque_t *a1, aadeque_t *a2);
 ```
 
-It's also possible to create a non-empty array deque, with the desired length `len`, initially containing undefined values:
+Appends or prepends all elements of *a2* to *a1*.
+
+They try to resize *a1* so that all elements of *a1* fit in memory and return
+the same pointer. If there is not enough space, they move the data of *a1* to another memory allocation, free the old pointer and return a pointer to the new allocation.
+
+Deleting multiple
+-----------------
 
 ``` C
-static inline aadeque_t *aadeque_create(unsigned int len);
+static inline aadeque_t *
+aadeque_delete_last_n(aadeque_t *a, unsigned int n);
+
+static inline aadeque_t *
+aadeque_delete_first_n(aadeque_t *a, unsigned int n);
+
+These return *a* or a pointer to another memory location if the allocation has
+been changed to reduce its size.
+
+Resizing by inserting undefined values
+--------------------------------------
+
+The `aadeque_make_space_` functions grow the array deque by "inserting" undefined values in the beginning and the end respectively.
+
+static inline aadeque_t *
+aadeque_make_space_after(aadeque_t *a, unsigned int n);
+
+static inline aadeque_t *
+aadeque_make_space_before(aadeque_t *a, unsigned int n);
+```
+
+It's also possible to create a non-empty array deque of undefined values, with the desired length *len*:
+
+``` C
+static inline aadeque_t *
+aadeque_create(unsigned int len);
 ```
 
 For more functions, see the source code. It is well commented.
@@ -82,9 +132,9 @@ including `aadeque.h`. This is entirely optional.
 deque. Defaults to `void *`.
 
 `AADEQUE_HEADER`: Define this if you want to include your own fields in the
-`aadeque_t` struct. (A tag? A reference-counter?)
+`aadeque_t`, which is a struct. (A tag? A reference-counter?)
 
-Allocation. You may define `AADEQUE_ALLOC(size)`,
+To use a custom allocator you may define `AADEQUE_ALLOC(size)`,
 `AADEQUE_REALLOC(ptr, size, oldsize)` and `AADEQUE_FREE(ptr, size)` to your
 custom allocation functions. By default `malloc(size)`, `realloc(ptr, size)`
 and `free(ptr)` are used.
