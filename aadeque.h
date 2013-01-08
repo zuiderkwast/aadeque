@@ -348,7 +348,7 @@ static inline void aadeque_make_space_after(aadeque_t **aptr, unsigned int n) {
  */
 static inline void aadeque_make_space_before(aadeque_t **aptr, unsigned int n) {
 	aadeque_reserve(aptr, n);
-	(*aptr)->off = aadeque_idx(*aptr, (*aptr)->cap - 1);
+	(*aptr)->off = aadeque_idx(*aptr, (*aptr)->cap - n);
 	(*aptr)->len += n;
 }
 
