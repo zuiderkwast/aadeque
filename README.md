@@ -1,0 +1,4 @@
+aadeque
+=======
+
+Another array deque
