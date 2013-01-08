@@ -1,19 +1,18 @@
 aadeque
 =======
 
-Another array deque.
+Another array deque
 
 Overview
 --------
 
-An array deque is a dymaic array with fast insertion and deletion in both ends.
+An array deque is a dynamic array with fast insertion and deletion in both ends.
 
-It can be used much like a dynamic array, likewise as a FIFO queue. It is implemented as a circular buffer that grows and shrinks automatically. This is
-developed as the built-in array type for a language I'm working on.
+It can be used much like a dynamic array and as a FIFO queue. It is implemented as a circular buffer that grows and shrinks automatically. This is developed as part of the runtime for a language I'm working on.
 
 The implementation consists of a single `.h` file of standard C code. It compiles cleanly with `-Wall -pedantic`. All functions are small and declared
 `static inline`. This design has the benefit that it's easy to use (just
-include one file) and that any unused functions will not take up space in the
+one fileto include) and that any unused functions will not take up space in the
 executable. This design also allows tweaking, by defining some macros. See
 *Tweaking macros* below.
 
@@ -24,11 +23,11 @@ deque (for offset, length, capacity and the contents itself).
 Usage
 -----
 
-`aadeque_t`: The type of an array deque. It's a struct. The values are of type
+The type of an array deque is `aadeque_t`. It's a struct. The values are of type
 `AADEQUE_VALUE_TYPE` which is `void *` by default, but can be of defined to any
 type you want. See *Tweaking macros* below.
 
-Functions for creating and freeing, check the length, accessing elements by
+Functions for creating and freeing, checking the length, accessing elements by
 index and replacing elements by index:
 
 ``` C
@@ -53,7 +52,7 @@ static inline AADEQUE_VALUE_TYPE aadeque_pop(aadeque_t **aptr);
 These take a pointer to a pointer to the array deque, because they may need to
 reallocate it and thus change the location of the array deque in memory.
 
-To avoid repeded use of push, pop, shift and unshift, there are functions that
+To avoid repeated use of push, pop, shift and unshift, there are functions that
 add and delete multiple elements at once. The `aadeque_make_space_` functions
 grow the array deque by "inserting" undefined values in the beginning and the
 end respectively.
