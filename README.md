@@ -3,9 +3,12 @@ aadeque: Another array deque
 
 An array deque is a dynamic array with fast insertion and deletion in both ends.
 
-It can be used much like a dynamic array and as a FIFO queue. It is implemented as a circular buffer that grows and shrinks automatically. This is developed as part of the runtime for a language I'm working on.
+It can be used much like a dynamic array and as a FIFO queue. It is implemented
+as a circular buffer that grows and shrinks automatically. This is developed as
+part of the runtime for a language I'm working on.
 
-The implementation consists of a single `.h` file of standard C code. It compiles cleanly with `-Wall -pedantic`. All functions are small and declared
+The implementation consists of a single `.h` file of standard C code. It
+compiles cleanly with `-Wall -pedantic`. All functions are small and declared
 `static inline`. This design has the benefit that it's easy to use (just
 one file to include) and that any unused functions will not take up space in the
 executable. This design also allows tweaking, by defining some macros. See
@@ -85,8 +88,10 @@ aadque_prepend(aadeque_t *a1, aadeque_t *a2);
 
 Appends or prepends all elements of *a2* to *a1*.
 
-They try to resize *a1* so that all elements of *a1* fit in memory and return
-the same pointer. If there is not enough space, they move the data of *a1* to another memory allocation, free the old pointer and return a pointer to the new allocation.
+They try to resize *a1* so that all elements fit in its memory and return the
+same pointer. If there is not enough space, they move the data of *a1* to
+another memory allocation, free the old pointer and return a pointer to the new
+allocation.
 
 Deleting multiple
 -----------------
@@ -97,6 +102,7 @@ aadeque_delete_last_n(aadeque_t *a, unsigned int n);
 
 static inline aadeque_t *
 aadeque_delete_first_n(aadeque_t *a, unsigned int n);
+```
 
 These return *a* or a pointer to another memory location if the allocation has
 been changed to reduce its size.
@@ -104,7 +110,8 @@ been changed to reduce its size.
 Resizing by inserting undefined values
 --------------------------------------
 
-The `aadeque_make_space_` functions grow the array deque by "inserting" undefined values in the beginning and the end respectively.
+The `aadeque_make_space_` functions grow the array deque by "inserting"
+undefined values in the beginning and the end respectively.
 
 static inline aadeque_t *
 aadeque_make_space_after(aadeque_t *a, unsigned int n);
@@ -113,7 +120,8 @@ static inline aadeque_t *
 aadeque_make_space_before(aadeque_t *a, unsigned int n);
 ```
 
-It's also possible to create a non-empty array deque of undefined values, with the desired length *len*:
+It's also possible to create a non-empty array deque of undefined values, with
+the desired length *len*:
 
 ``` C
 static inline aadeque_t *
@@ -139,7 +147,8 @@ To use a custom allocator you may define `AADEQUE_ALLOC(size)`,
 custom allocation functions. By default `malloc(size)`, `realloc(ptr, size)`
 and `free(ptr)` are used.
 
-Defining `AADEQUE_CLEAR_UNUSED_MEM` causes unused allocated memory to be overwritten with nul bytes. This might be useful if you're using a conservative
+Defining `AADEQUE_CLEAR_UNUSED_MEM` causes unused allocated memory to be
+overwritten with nul bytes. This might be useful if you're using a conservative
 garbage collector together with these array deques.
 
 The minimum capacity `AADEQUE_MIN_CAPACITY` can be defined to any power of 2.
@@ -159,6 +168,7 @@ Examples
 int main() {
 	int i;
 	aadeque_t *a = aadeque_create_empty();
+	/* Store some extra stuff in the header */
 	a->extra1 = 42;
 	a->extra2 = 999;
 	/* Add the numbers 0 to 9 */
