@@ -113,6 +113,7 @@ Resizing by inserting undefined values
 The `aadeque_make_space_` functions grow the array deque by "inserting"
 undefined values in the beginning and the end respectively.
 
+``` C
 static inline aadeque_t *
 aadeque_make_space_after(aadeque_t *a, unsigned int n);
 

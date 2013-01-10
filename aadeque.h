@@ -60,14 +60,15 @@ static inline unsigned int aadeque_idx(aadeque_t *a, unsigned int i) {
  */
 static inline aadeque_t *aadeque_create(unsigned int len) {
 	unsigned int cap = AADEQUE_MIN_CAPACITY;
+	aadeque_t *a;
 	while (cap < len)
 		cap = cap << 1;
-	aadeque_t *arr = (aadeque_t *)AADEQUE_ALLOC(aadeque_sizeof(cap));
-	if (!arr) AADEQUE_OOM();
-	arr->len = len;
-	arr->off = 0;
-	arr->cap = cap;
-	return arr;
+	a = (aadeque_t *)AADEQUE_ALLOC(aadeque_sizeof(cap));
+	if (!a) AADEQUE_OOM();
+	a->len = len;
+	a->off = 0;
+	a->cap = cap;
+	return a;
 }
 
 /*
@@ -142,11 +143,46 @@ static inline void aadeque_clear(aadeque_t *a, unsigned int i, unsigned int n) {
 	}
 }
 
+/*
+ * Clones an array deque, preserving the internal memory layout.
+ */
+static inline aadeque_t *aadeque_clone(aadeque_t *a) {
+	size_t sz = aadeque_sizeof(a->cap);
+	void *clone = AADEQUE_ALLOC(sz);
+	if (!clone) AADEQUE_OOM();
+	return (aadeque_t *)memcpy(clone, a, sz);
+}
+
+/*
+ * Create an aadeque_t from the n values pointed to by array.
+ */
+static inline aadeque_t *aadeque_from_array(AADEQUE_VALUE_TYPE *array,
+                                            unsigned int n) {
+	aadeque_t *a = aadeque_create(n);
+	memcpy(a->els, array, sizeof(AADEQUE_VALUE_TYPE) * n);
+	return a;
+}
+
+/*
+ * Compare the contents of a against a static C array of n elements. Returns 1
+ * if the number of elements is equal to n and all elements are equal to their
+ * counterparts in array, 0 otherwise.
+ */
+int aadeque_eq_array(aadeque_t *a, AADEQUE_VALUE_TYPE *array, unsigned int n) {
+	unsigned int i;
+	if (a->len != n)
+		return 0;
+	for (i = 0; i < n; i++)
+		if (aadeque_get(a, i) != array[i])
+			return 0;
+	return 1;
+}
+
 /*----------------------------------------------------------------------------
  * Helpers for growing and compacting the underlying buffer. Like realloc,
  * these functions try to resize the underlying buffer and return a. It there
- * is not enough space, they copy the data to a new memory location, frees
- * the old memory and returns a pointer to the new the new memory allocation.
+ * is not enough space, they copy the data to a new memory location, free the
+ * old memory and return a pointer to the new the new memory allocation.
  *----------------------------------------------------------------------------*/
 
 /*
@@ -163,7 +199,7 @@ static inline aadeque_t *aadeque_reserve(aadeque_t *a, unsigned int n) {
 		a = (aadeque_t *)AADEQUE_REALLOC(a,
 		                                 aadeque_sizeof(a->cap),
 		                                 aadeque_sizeof(oldcap));
-		if (!arr) AADEQUE_OOM();
+		if (!a) AADEQUE_OOM();
 		/* adjust content to the increased capacity */
 		if (a->off + a->len > oldcap) {
 			/*
@@ -191,8 +227,8 @@ static inline aadeque_t *aadeque_reserve(aadeque_t *a, unsigned int n) {
 }
 
 /*
- * Reduces the capacity to a number larger than or equal to mincap. Mincap must
- * be at least as large as the number of elements in the deque.
+ * Reduces the capacity to some number larger than or equal to mincap. Mincap
+ * must be at least as large as the number of elements in the deque.
  */
 static inline aadeque_t *aadeque_compact_to(aadeque_t *a, unsigned int mincap) {
 	unsigned int doublemincap = 	mincap << 1;
@@ -206,7 +242,7 @@ static inline aadeque_t *aadeque_compact_to(aadeque_t *a, unsigned int mincap) {
 			a->cap = a->cap >> 1;
 		} while (a->cap >= doublemincap && a->cap > AADEQUE_MIN_CAPACITY);
 		/* Adjust content to decreased capacity */
-		if (a->off + a->len >= oldcap) {
+		if (a->off + a->len > oldcap) {
 			/*
 			 * It warpped around already. Move the first part to within the new
 			 * boundaries.
@@ -283,44 +319,40 @@ static inline aadeque_t *aadeque_compact_some(aadeque_t *a) {
 	return aadeque_compact_to(a, a->len << 1);
 }
 
+/*----------------------------------------------------------------------------
+ * Functions that extend the deque in either end. The added elements will not
+ * be initialized, thus their indices will contain undefined values.
+ *
+ * These functions resize the underlying buffer when needed. Like realloc,
+ * they try to resize the underlying buffer and return a. It there is not
+ * enough space, they copy the data to a new memory location, free the old
+ * memory and return a pointer to the new the new memory allocation.
+ *----------------------------------------------------------------------------*/
+
 /*
- * Reduces the capacity by halving it as many times as possible, freeing unused
- * memory.
+ * Inserts n undefined values after the last element.
  */
-static inline aadeque_t *aadeque_compact(aadeque_t *a) {
-	return aadeque_compact_to(a, a->len);
+static inline aadeque_t *aadeque_make_space_after(aadeque_t *a,
+                                                  unsigned int n) {
+	a = aadeque_reserve(a, n);
+	a->len += n;
+	return a;
 }
 
 /*
- * Joins the parts together in memory, possibly in the wrong order. This is
- * useful if you want to sort or shuffle the underlaying array using functions
- * for raw arrays.
+ * Inserts n undefined values before the first element.
  */
-static inline void aadeque_make_contiguous_unordered(aadeque_t *a) {
-	if (a->off + a->len > a->cap) {
-		/*
-		 * It warps around. Just move the parts together in the wrong order.
-		 *
-		 *                  0  end  start cap
-		 *                 /  /    /     /
-		 * Before:        |-->    o-----|
-		 * Intermediate:  |-->o-----    |
-		 * After:         |o------->    |
-		 */
-		memmove(&(a->els[a->off + a->len - a->cap]),
-		        &(a->els[a->off]),
-		        sizeof(AADEQUE_VALUE_TYPE) * (a->cap - a->off));
-		a->off = 0;
-	}
+static inline aadeque_t *aadeque_make_space_before(aadeque_t *a,
+                                                   unsigned int n) {
+	a = aadeque_reserve(a, n);
+	a->off = aadeque_idx(a, a->cap - n);
+	a->len += n;
+	return a;
 }
 
-/*---------------------------------------------------------------------------
- * Resize the deque by deleting existing or inserting undefined values in
- * each end. Resizes the underlying buffer when needed. Like realloc,
- * these functions try to resize the underlying buffer and return a. It there
- * is not enough space, they copy the data to a new memory location, frees
- * the old memory and returns a pointer to the new the new memory allocation.
- *---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------
+ * Functions for deleting multiple elements
+ *----------------------------------------------------------------------------*/
 
 /*
  * Deletes the last n elements.
@@ -345,29 +377,52 @@ static inline aadeque_t *aadeque_delete_first_n(aadeque_t *a, unsigned int n) {
 	return aadeque_compact_some(a);
 }
 
+/*---------------------------------------------------------------------------
+ * The pure deque operations: Inserting and deleting values in both ends.
+ * Shift, unshift, push, pop.
+ *---------------------------------------------------------------------------*/
+
 /*
- * Inserts n undefined values after the last element.
+ * Insert an element at the beginning.
+ * May change aptr if it needs to be reallocated.
  */
-static inline aadeque_t *aadeque_make_space_after(aadeque_t *a,
-                                                  unsigned int n) {
-	a = aadeque_reserve(a, n);
-	a->len += n;
-	return a;
+static inline void aadeque_unshift(aadeque_t **aptr, AADEQUE_VALUE_TYPE value) {
+	*aptr = aadeque_make_space_before(*aptr, 1);
+	(*aptr)->els[(*aptr)->off] = value;
 }
 
 /*
- * Inserts n undefined values before the first element.
+ * Remove an element at the beginning and return its value.
+ * May change aptr if it needs to be reallocated.
+*/
+static inline AADEQUE_VALUE_TYPE aadeque_shift(aadeque_t **aptr) {
+	AADEQUE_VALUE_TYPE value = (*aptr)->els[(*aptr)->off];
+	*aptr = aadeque_delete_first_n(*aptr, 1);
+	return value;
+}
+
+/*
+ * Insert an element at the end.
+ * May change aptr if it needs to be reallocated.
  */
-static inline aadeque_t *aadeque_make_space_before(aadeque_t *a,
-                                                   unsigned int n) {
-	a = aadeque_reserve(a, n);
-	a->off = aadeque_idx(a, a->cap - n);
-	a->len += n;
-	return a;
+static inline void aadeque_push(aadeque_t **aptr, AADEQUE_VALUE_TYPE value) {
+	*aptr = aadeque_make_space_after(*aptr, 1);
+	(*aptr)->els[aadeque_idx(*aptr, (*aptr)->len - 1)] = value;
+}
+
+/*
+ * Remove an element at the end and return its value.
+ * May change aptr if it needs to be reallocated.
+ */
+static inline AADEQUE_VALUE_TYPE aadeque_pop(aadeque_t **aptr) {
+	AADEQUE_VALUE_TYPE value =
+		(*aptr)->els[aadeque_idx(*aptr, (*aptr)->len - 1)];
+	*aptr = aadeque_delete_last_n(*aptr, 1);
+	return value;
 }
 
 /*---------------------------------------------------------------------------
- * Append or prepend all elements of another array deque
+ * Append or prepend all elements of one array deque to another
  *---------------------------------------------------------------------------*/
 
 /*
@@ -385,7 +440,7 @@ static inline aadeque_t *aadeque_append(aadeque_t *a1, aadeque_t *a2) {
 /*
  * Prepends all elements of s2 to a1 and returns the (possibly reallocated) a1.
  */
-static inline aadeque_t *aadque_prepend(aadeque_t *a1, aadeque_t *a2) {
+static inline aadeque_t *aadeque_prepend(aadeque_t *a1, aadeque_t *a2) {
 	unsigned int i = 0, j;
 	a1 = aadeque_make_space_before(a1, a2->len);
 	/* TODO: copy using memcpy instead of the loop */
@@ -394,46 +449,41 @@ static inline aadeque_t *aadque_prepend(aadeque_t *a1, aadeque_t *a2) {
 	return a1;
 }
 
-/*---------------------------------------------------------------------------
- * The pure deque operations: Inserting and deleting values in both ends.
- * Shift, unshift, push, pop.
- *---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------
+ * Various, perhaps less useful functions
+ *----------------------------------------------------------------------------*/
 
 /*
- * Insert an element at the beginning.
- * May change array ptr if it needs to be reallocated.
+ * Reduces the capacity, freeing as much unused memory as possible. This is
+ * only useful after deleting elements, if you're not going to add elements the
+ * deque again (which may trigger expensive resizing again).
+ *
+ * Returns the unmodified pointer if no memory could be free'd. Otherwise, frees
+ * the old one and returns a pointer to the new, resized allocation.
  */
-static inline void aadeque_unshift(aadeque_t **aptr, AADEQUE_VALUE_TYPE value) {
-	*aptr = aadeque_make_space_before(*aptr, 1);
-	(*aptr)->els[(*aptr)->off] = value;
+static inline aadeque_t *aadeque_compact(aadeque_t *a) {
+	return aadeque_compact_to(a, a->len);
 }
 
 /*
- * Remove an element at the beginning and return its value.
- * May change array ptr if it needs to be reallocated.
-*/
-static inline AADEQUE_VALUE_TYPE aadeque_shift(aadeque_t **aptr) {
-	AADEQUE_VALUE_TYPE value = (*aptr)->els[(*aptr)->off];
-	*aptr = aadeque_delete_first_n(*aptr, 1);
-	return value;
-}
-
-/*
- * Insert an element at the end.
- * May change array ptr if it needs to be reallocated.
+ * Joins the parts together in memory, possibly in the wrong order. This is
+ * useful if you want to sort or shuffle the underlaying array using functions
+ * for raw arrays (such as qsort).
  */
-static inline void aadeque_push(aadeque_t **aptr, AADEQUE_VALUE_TYPE value) {
-	*aptr = aadeque_make_space_after(*aptr, 1);
-	(*aptr)->els[aadeque_idx(*aptr, (*aptr)->len - 1)] = value;
-}
-
-/*
- * Remove an element at the end and return its value.
- * May change array ptr if it needs to be reallocated.
- */
-static inline AADEQUE_VALUE_TYPE aadeque_pop(aadeque_t **aptr) {
-	AADEQUE_VALUE_TYPE value =
-		(*aptr)->els[aadeque_idx(*aptr, (*aptr)->len - 1)];
-	*aptr = aadeque_delete_last_n(*aptr, 1);
-	return value;
+static inline void aadeque_make_contiguous_unordered(aadeque_t *a) {
+	if (a->off + a->len > a->cap) {
+		/*
+		 * It warps around. Just move the parts together in the wrong order.
+		 *
+		 *                  0  end  start cap
+		 *                 /  /    /     /
+		 * Before:        |-->    o-----|
+		 * Intermediate:  |-->o-----    |
+		 * After:         |o------->    |
+		 */
+		memmove(&(a->els[a->off + a->len - a->cap]),
+		        &(a->els[a->off]),
+		        sizeof(AADEQUE_VALUE_TYPE) * (a->cap - a->off));
+		a->off = 0;
+	}
 }
