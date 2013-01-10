@@ -16,6 +16,9 @@
 #ifndef AADEQUE_FREE
 	#define AADEQUE_FREE(ptr, size) free(ptr)
 #endif
+#ifndef AADEQUE_OOM
+	#define AADEQUE_OOM() exit(-1)
+#endif
 
 /* minimum capacity, tweakable, must be a power of 2 */
 #ifndef AADEQUE_MIN_CAPACITY
@@ -60,6 +63,7 @@ static inline aadeque_t *aadeque_create(unsigned int len) {
 	while (cap < len)
 		cap = cap << 1;
 	aadeque_t *arr = (aadeque_t *)AADEQUE_ALLOC(aadeque_sizeof(cap));
+	if (!arr) AADEQUE_OOM();
 	arr->len = len;
 	arr->off = 0;
 	arr->cap = cap;
@@ -159,6 +163,7 @@ static inline aadeque_t *aadeque_reserve(aadeque_t *a, unsigned int n) {
 		a = (aadeque_t *)AADEQUE_REALLOC(a,
 		                                 aadeque_sizeof(a->cap),
 		                                 aadeque_sizeof(oldcap));
+		if (!arr) AADEQUE_OOM();
 		/* adjust content to the increased capacity */
 		if (a->off + a->len > oldcap) {
 			/*
@@ -261,6 +266,7 @@ static inline aadeque_t *aadeque_compact_to(aadeque_t *a, unsigned int mincap) {
 		a = (aadeque_t *)AADEQUE_REALLOC(a,
 		                                 aadeque_sizeof(a->cap),
 		                                 aadeque_sizeof(oldcap));
+		if (!a) AADEQUE_OOM();
 	}
 	return a;
 }

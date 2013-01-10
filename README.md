@@ -147,6 +147,10 @@ To use a custom allocator you may define `AADEQUE_ALLOC(size)`,
 custom allocation functions. By default `malloc(size)`, `realloc(ptr, size)`
 and `free(ptr)` are used.
 
+`AADEQUE_OOM()` is called when a memory allocation fails, which normally means
+that we're out of memory. Define this macro if you want to handle this. The
+default is `exit(-1)`.
+
 Defining `AADEQUE_CLEAR_UNUSED_MEM` causes unused allocated memory to be
 overwritten with nul bytes. This might be useful if you're using a conservative
 garbage collector together with these array deques.
