@@ -30,16 +30,25 @@ type you want. See *Tweaking macros* below.
 Create, destroy, get, set, length
 ---------------------------------
 
-Functions for creating and freeing, checking the length, accessing elements by
-index and replacing elements by index. These are all constant time operations.
+Functions for creating and freeing:
 
 ``` C
 static inline aadeque_t *
 aadeque_create_empty(void);
 
+static inline aadeque_t *
+aadeque_create(unsigned int len);
+
 static inline void
 aadeque_destroy(aadeque_t *a);
+```
 
+`aadeque_create` creates a array deque with `len` undefined values.
+
+Below are functions for checking the length, accessing elements by index and
+replacing elements by index. These are all constant time operations.
+
+``` C
 static inline unsigned int
 aadeque_len(aadeque_t *a);
 
@@ -117,14 +126,6 @@ aadeque_make_space_after(aadeque_t *a, unsigned int n);
 
 static inline aadeque_t *
 aadeque_make_space_before(aadeque_t *a, unsigned int n);
-```
-
-It's also possible to create a non-empty array deque of undefined values, with
-the desired length *len*:
-
-``` C
-static inline aadeque_t *
-aadeque_create(unsigned int len);
 ```
 
 For more functions, see the source code. It is well commented.
