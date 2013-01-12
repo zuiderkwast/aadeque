@@ -4,8 +4,10 @@ aadeque: Another array deque
 An array deque is a dynamic array with fast insertion and deletion in both ends.
 
 It can be used much like a dynamic array and as a FIFO queue. It is implemented
-as a circular buffer that grows and shrinks automatically. This is developed as
-part of the runtime for a language I'm working on.
+as a circular buffer that grows and shrinks automatically. A contiguous area of
+memory is used for one array deque (for offset, length, capacity and the
+contents itself). It is developed as part of the runtime for a language I'm
+working on.
 
 The implementation consists of a single `.h` file of standard C code. It
 compiles cleanly with `-Wall -pedantic`. All functions are small and declared
@@ -13,10 +15,6 @@ compiles cleanly with `-Wall -pedantic`. All functions are small and declared
 one file to include) and that any unused functions will not take up space in the
 executable. This design also allows tweaking, by defining some macros. See
 *Tweaking macros* below.
-
-The use of modulo for index lookups is avoided by using only powers of 2 as
-the possible capacities. Only one contigous area of memory is used for one array
-deque (for offset, length, capacity and the contents itself).
 
 Usage
 -----
@@ -191,11 +189,6 @@ int main() {
 	return 0;
 }
 ```
-
-Todo
-----
-
-More complete tests.
 
 Public domain
 -------------
