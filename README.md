@@ -82,8 +82,8 @@ aadeque_pop(aadeque_t **aptr);
 These take a pointer to a pointer to the array deque, because they may need to
 reallocate it and thus change the location of the array deque in memory.
 
-Appending and prepending
-------------------------
+Append and prepend
+------------------
 
 ``` C
 static inline aadeque_t *
@@ -100,8 +100,8 @@ same pointer. If there is not enough space, they move the data of *a1* to
 another memory allocation, free the old pointer and return a pointer to the new
 allocation.
 
-Deleting multiple
------------------
+Delete multiple
+---------------
 
 ``` C
 static inline aadeque_t *
@@ -113,6 +113,21 @@ aadeque_delete_first_n(aadeque_t *a, unsigned int n);
 
 These return *a* or a pointer to another memory location if the allocation has
 been changed to reduce its size.
+
+Slice
+-----
+
+Copy a part (a slice) of the contents to a new array deque.
+
+``` C
+static inline aadeque_t *
+aadeque_slice(aadeque_t *a, unsigned int offset, unsigned int length);
+```
+
+Creates a new array deque, by copying *length* elements starting at *offset*.
+
+If length + offset is greater than the length of *a*, the behaviour is
+undefined. No check is performed on *length* and *offset*.
 
 Resizing by inserting undefined values
 --------------------------------------

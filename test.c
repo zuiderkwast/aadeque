@@ -141,6 +141,16 @@ void test_delete_first_n(void) {
 	aadeque_destroy(a);
 }
 
+void test_slice(void) {
+	int before[7] = {1, 2, 3, 4, 5, 6, 7},
+	    after [4] = {3, 4, 5, 6};
+	aadeque_t *a = aadeque_from_array(before, 7),
+	          *b = aadeque_slice(a, 2, 4);
+	test(aadeque_eq_array(b, after, 4), "aadeque_slice");
+	aadeque_destroy(a);
+	aadeque_destroy(b);
+}
+
 /*
  * Growing the memory for special case of memory layout. See the comments in the
  * source code of aadeque_reserve() in aadeque.h.
@@ -250,6 +260,7 @@ int main() {
 	test_prepend();
 	test_delete_last_n();
 	test_delete_first_n();
+	test_slice();
 	test_grow_warping();
 	test_shrink_case_1();
 	test_shrink_case_2();

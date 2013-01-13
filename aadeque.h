@@ -449,6 +449,29 @@ static inline aadeque_t *aadeque_prepend(aadeque_t *a1, aadeque_t *a2) {
 	return a1;
 }
 
+/*---------------------------------------------------------------------------
+ * Slice: copy a part of the contents to a new array deque.
+ *---------------------------------------------------------------------------*/
+
+/*
+ * Creates a new array deque, by copying *length* elements starting at *offset*.
+ *
+ * If length + offset is greater than the length of a, the behaviour is
+ * undefined. No check is performed on *length* and *offset*.
+ */
+static inline aadeque_t *aadeque_slice(aadeque_t *a,
+                                       unsigned int offset,
+                                       unsigned int length) {
+	aadeque_t *b = aadeque_create(length);
+	/* TODO: use memcpy instead of the loop */
+	unsigned int i;
+	for (i = 0; i < length; i++) {
+		AADEQUE_VALUE_TYPE x = aadeque_get(a, i + offset);
+		aadeque_set(b, i, x);
+	}
+	return b;
+}
+
 /*----------------------------------------------------------------------------
  * Various, perhaps less useful functions
  *----------------------------------------------------------------------------*/
