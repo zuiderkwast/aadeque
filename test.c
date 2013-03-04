@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 /* defining tweaking macros, before including aadeque.h */
-#define AADEQUE_VALUE_TYPE int
+#define AADEQUE_VALUE_T int
 #define AADEQUE_MIN_CAPACITY 4
 
 /* tweak allocation, to keep track allocated bytes */
