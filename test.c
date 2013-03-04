@@ -123,6 +123,29 @@ void test_prepend(void) {
 	aadeque_destroy(a2);
 }
 
+void test_crop(void) {
+	int before[5] = {1, 2, 3, 4, 5},
+	    after1[2] = {1, 2},
+	    after2[2] = {4, 5},
+	    after3[3] = {2, 3, 4};
+	aadeque_t *a;
+	/* keep the first 2 */
+	a = aadeque_from_array(before, 5);
+	a = aadeque_crop(a, 0, 2);
+	test(aadeque_eq_array(a, after1, 2), "aadeque_crop: keep beginning");
+	aadeque_destroy(a);
+	/* keep the last 2 */
+	a = aadeque_from_array(before, 5);
+	a = aadeque_crop(a, 3, 2);
+	test(aadeque_eq_array(a, after2, 2), "aadeque_crop: keep end");
+	aadeque_destroy(a);
+	/* keep the middle 3 */
+	a = aadeque_from_array(before, 5);
+	a = aadeque_crop(a, 1, 3);
+	test(aadeque_eq_array(a, after3, 3), "aadeque_crop: keep middle");
+	aadeque_destroy(a);
+}
+
 void test_delete_last_n(void) {
 	int before[5] = {1, 2, 3, 4, 5},
 	    after [2] = {1, 2};
@@ -258,6 +281,7 @@ int main() {
 	test_shift();
 	test_append();
 	test_prepend();
+	test_crop();
 	test_delete_last_n();
 	test_delete_first_n();
 	test_slice();

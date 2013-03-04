@@ -6,15 +6,15 @@ An array deque is a dynamic array with fast insertion and deletion in both ends.
 It can be used much like a dynamic array and as a FIFO queue. It is implemented
 as a circular buffer that grows and shrinks automatically. A contiguous area of
 memory is used for one array deque (for offset, length, capacity and the
-contents itself). It is developed as part of the runtime for a language I'm
+contents itself). It is developed for use in the runtime for a language I'm
 working on.
 
 The implementation consists of a single `.h` file of standard C code. It
-compiles cleanly with `-Wall -pedantic`. All functions are small and declared
-`static inline`. This design has the benefit that it's easy to use (just
-one file to include) and that any unused functions will not take up space in the
-executable. This design also allows tweaking, by defining some macros. See
-*Tweaking macros* below.
+compiles cleanly with `-Wall -pedantic -std=c99`. All functions are small and
+declared `static inline`. This design has the benefit that it's easy to use
+(just one file to include) and that any unused functions will not take up space
+in the executable. This design also allows tweaking, by defining some macros.
+See *Tweaking macros* below.
 
 Usage
 -----
@@ -24,8 +24,10 @@ Usage
 ```
 
 The type of an array deque is `struct aadeque`. The values are of type
-`AADEQUE_VALUE_T` which is `void *` by default, but can be of defined to any
-type you want. See *Tweaking macros* below.
+`AADEQUE_VALUE_T` which is a macro defined to `void *` by default, but can be
+defined to any type you want. The length and indices of the array deque has
+type `AADEQUE_SIZE_T`, which is a macro that is `unsigned int` by default. See
+*Tweaking macros* below.
 
 Create, destroy, get, set, length
 ---------------------------------
@@ -37,7 +39,7 @@ static inline struct aadeque *
 aadeque_create_empty(void);
 
 static inline struct aadeque *
-aadeque_create(unsigned int len);
+aadeque_create(AADEQUE_SIZE_T len);
 
 static inline void
 aadeque_destroy(struct aadeque *a);
@@ -49,14 +51,14 @@ Below are functions for checking the length, accessing elements by index and
 replacing elements by index. These are all constant time operations.
 
 ``` C
-static inline unsigned int
+static inline AADEQUE_SIZE_T
 aadeque_len(struct aadeque *a);
 
 static inline AADEQUE_VALUE_T
-aadeque_get(struct aadeque *a, unsigned int i);
+aadeque_get(struct aadeque *a, AADEQUE_SIZE_T i);
 
 static inline void
-aadeque_set(struct aadeque *a, unsigned int i, AADEQUE_VALUE_T value);
+aadeque_set(struct aadeque *a, AADEQUE_SIZE_T i, AADEQUE_VALUE_T value);
 ```
 
 Push, pop, shift, unshift
@@ -105,14 +107,21 @@ Delete multiple
 
 ``` C
 static inline struct aadeque *
-aadeque_delete_last_n(struct aadeque *a, unsigned int n);
+aadeque_crop(struct aadeque *a, AADEQUE_SIZE_T offset, AADEQUE_SIZE_T length);
 
 static inline struct aadeque *
-aadeque_delete_first_n(struct aadeque *a, unsigned int n);
+aadeque_delete_last_n(struct aadeque *a, AADEQUE_SIZE_T n);
+
+static inline struct aadeque *
+aadeque_delete_first_n(struct aadeque *a, AADEQUE_SIZE_T n);
 ```
 
 These return *a* or a new pointer if the resulting array deque has been moved
 to a new memory location.
+
+*aadeque_crop()* shrinks the array deque by deleting all elements except the
+*length* elements in the interval from *offset* to *offset* + *length* - 1. See
+also *aadeque_slice()*.
 
 Slice
 -----
@@ -121,7 +130,7 @@ Copy a part (a slice) of the contents to a new array deque.
 
 ``` C
 static inline struct aadeque *
-aadeque_slice(struct aadeque *a, unsigned int offset, unsigned int length);
+aadeque_slice(struct aadeque *a, AADEQUE_SIZE_T offset, AADEQUE_SIZE_T length);
 ```
 
 Creates a new array deque, by copying *length* elements starting at *offset*.
@@ -137,10 +146,10 @@ undefined values in the beginning and the end respectively.
 
 ``` C
 static inline struct aadeque *
-aadeque_make_space_after(struct aadeque *a, unsigned int n);
+aadeque_make_space_after(struct aadeque *a, AADEQUE_SIZE_T n);
 
 static inline struct aadeque *
-aadeque_make_space_before(struct aadeque *a, unsigned int n);
+aadeque_make_space_before(struct aadeque *a, AADEQUE_SIZE_T n);
 ```
 
 For more functions, see the source code. It is well commented.

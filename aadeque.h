@@ -376,15 +376,29 @@ aadeque_make_space_before(struct aadeque *a, AADEQUE_SIZE_T n) {
  *----------------------------------------------------------------------------*/
 
 /*
+ * Deletes everything exept n elements starting at index i. Like slice, but
+ * destructive, i.e. it modifies *a*. Returns a pointer to the new or modified
+ * array deque.
+ *
+ * If length + offset is greater than the length of a, the behaviour is
+ * undefined. No check is performed on *length* and *offset*.
+ */
+static inline struct aadeque *
+aadeque_crop(struct aadeque *a, AADEQUE_SIZE_T offset, AADEQUE_SIZE_T length) {
+	#ifdef AADEQUE_CLEAR_UNUSED_MEM
+	aadeque_clear(a, offset + length, a->len - length);
+	#endif
+	a->off = aadeque_idx(a, offset);
+	a->len = length;
+	return aadeque_compact_some(a);
+}
+
+/*
  * Deletes the last n elements.
  */
 static inline struct aadeque *
 aadeque_delete_last_n(struct aadeque *a, AADEQUE_SIZE_T n) {
-	#ifdef AADEQUE_CLEAR_UNUSED_MEM
-	aadeque_clear(a, a->len - n, n);
-	#endif
-	a->len -= n;
-	return aadeque_compact_some(a);
+	return aadeque_crop(a, 0, a->len - n);
 }
 
 /*
@@ -392,12 +406,7 @@ aadeque_delete_last_n(struct aadeque *a, AADEQUE_SIZE_T n) {
  */
 static inline struct aadeque *
 aadeque_delete_first_n(struct aadeque *a, AADEQUE_SIZE_T n) {
-	#ifdef AADEQUE_CLEAR_UNUSED_MEM
-	aadeque_clear(a, 0, n);
-	#endif
-	a->off = aadeque_idx(a, n);
-	a->len -= n;
-	return aadeque_compact_some(a);
+	return aadeque_crop(a, n, a->len - n);
 }
 
 /*---------------------------------------------------------------------------
@@ -422,7 +431,7 @@ aadeque_unshift(struct aadeque **aptr, AADEQUE_VALUE_T value) {
 static inline AADEQUE_VALUE_T
 aadeque_shift(struct aadeque **aptr) {
 	AADEQUE_VALUE_T value = (*aptr)->els[(*aptr)->off];
-	*aptr = aadeque_delete_first_n(*aptr, 1);
+	*aptr = aadeque_crop(*aptr, 1, (*aptr)->len - 1);
 	return value;
 }
 
@@ -444,7 +453,7 @@ static inline AADEQUE_VALUE_T
 aadeque_pop(struct aadeque **aptr) {
 	AADEQUE_VALUE_T value =
 		(*aptr)->els[aadeque_idx(*aptr, (*aptr)->len - 1)];
-	*aptr = aadeque_delete_last_n(*aptr, 1);
+	*aptr = aadeque_crop(*aptr, 0, (*aptr)->len - 1);
 	return value;
 }
 
@@ -487,6 +496,8 @@ aadeque_prepend(struct aadeque *a1, struct aadeque *a2) {
  *
  * If length + offset is greater than the length of a, the behaviour is
  * undefined. No check is performed on *length* and *offset*.
+ *
+ * See also *aadeque_crop()*.
  */
 static inline struct aadeque *
 aadeque_slice(struct aadeque *a, AADEQUE_SIZE_T offset, AADEQUE_SIZE_T length) {
