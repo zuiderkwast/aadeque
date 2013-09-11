@@ -13,8 +13,8 @@ The implementation consists of a single `.h` file of standard C code. It
 compiles cleanly with `-Wall -pedantic -std=c99`. All functions are small and
 declared `static inline`. This design has the benefit that it's easy to use
 (just one file to include) and that any unused functions will not take up space
-in the executable. This design also allows tweaking, by defining some macros.
-See *Tweaking macros* below.
+in the executable. This design also allows generics, by defining some macros.
+See *Generics* below.
 
 Usage
 -----
@@ -154,11 +154,18 @@ aadeque_make_space_before(struct aadeque *a, AADEQUE_SIZE_T n);
 
 For more functions, see the source code. It is well commented.
 
-Tweaking macros
----------------
+Generics
+--------
 
 It's possible to tweak some of the behaviour by defining some macros prior to
 including `aadeque.h`. This is entirely optional.
+
+To create multiple types of array deques, it is possible to include `aadeque.h`
+multiple times. To do so, you must first undefine `AADEQUE_H` and redefine
+`AADEQUE_PREFIX`. You may also want to redefine any of the other macros below.
+
+`AADEQUE_PREFIX`: User-defined prefix to use instead of "aadeque" for types
+and function names. Defaults to `aadeque`.
 
 `AADEQUE_VALUE_T`: Define this to the type you want to store in your array
 deque. Defaults to `void *`.

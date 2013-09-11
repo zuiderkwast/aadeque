@@ -5,7 +5,7 @@
 
 /* defining tweaking macros, before including aadeque.h */
 #define AADEQUE_VALUE_T int
-#define AADEQUE_MIN_CAPACITY 4
+#define AADEQUE_MIN_CAPACITY 3
 
 /* tweak allocation, to keep track allocated bytes */
 #define AADEQUE_ALLOC(size) test_alloc(size)
@@ -206,6 +206,7 @@ void test_shrink_case_1(void) {
 	/* delete some, but not enough to make it shrink automatically */
 	a = aadeque_delete_last_n(a, 2);
 	/* check the internal structure */
+	printf("cap len off = %d %d %d\n", a->cap, a->len, a->off);
 	test(a->cap == 8 && a->len == 3 && a->off == 7,
 	     "Shrinking memory case 1: setup");
 	/* compact and check again */
@@ -246,18 +247,21 @@ void test_shrink_case_2(void) {
  */
 void test_shrink_case_3(void) {
 	int expected[3] = {3, 4, 5};
-	int init    [5] = {1, 2, 3, 4, 5};
+	int init    [5] = {1, 2, 3, 4};
 	/*
 	 * Create an array deque that crosses the middle. Not warped before shrink
 	 * but must be warped after shrink.
 	 */
-	aadeque_t *a = aadeque_from_array(init, 5);
+	aadeque_t *a = aadeque_from_array(init, 4);
+	/* adding one doubles the capacity to 8 */
+	aadeque_push(&a, 5);
 	/* delete some, but not enough to make it shrink automatically */
 	a = aadeque_delete_first_n(a, 2);
 	/*
 	 * check the internal structure: crossing the middle, not totally in the 2nd
 	 * half, not warped
 	 */
+	printf("cap len off = %d %d %d\n", a->cap, a->len, a->off);
 	test(a->cap == 8 && a->len == 3 && a->off == 2,
 	     "Shrinking memory case 3: setup");
 	/* compact and check again */

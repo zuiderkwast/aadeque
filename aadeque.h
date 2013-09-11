@@ -20,7 +20,7 @@
 	#define AADEQUE_OOM() exit(-1)
 #endif
 
-/* minimum capacity, tweakable, must be a power of 2 */
+/* minimum capacity */
 #ifndef AADEQUE_MIN_CAPACITY
 	#define AADEQUE_MIN_CAPACITY 4
 #endif
@@ -35,8 +35,22 @@
 	#define AADEQUE_SIZE_T unsigned int
 #endif
 
+/*
+ * Generics: prefix to use instead of 'oaht'. Defaults to oaht.
+ */
+#ifndef AADEQUE_PREFIX
+	#define AADEQUE_PREFIX aadeque
+#endif
+
+/*
+ * Macros to expand the prefix.
+ */
+#define AADEQUE_XXNAME(prefix, name) prefix ## name
+#define AADEQUE_XNAME(prefix, name) AADEQUE_XXNAME(prefix, name)
+#define AADEQUE_NAME(name) AADEQUE_XNAME(AADEQUE_PREFIX, name)
+
 /* The deque type, optionally prefixed user-defined extra members */
-struct aadeque {
+struct AADEQUE_PREFIX {
 	#ifdef AADEQUE_HEADER
 	AADEQUE_HEADER
 	#endif
@@ -46,35 +60,42 @@ struct aadeque {
 	AADEQUE_VALUE_T els[1];  /* elements, allocated in-place */
 };
 
-/* An alias for struct aadeque (deprecated) */
-typedef struct aadeque aadeque_t;
+/* aadeque_t is an alias for struct aadeque */
+#undef AADEQUE_T
+#define AADEQUE_T AADEQUE_NAME(_t)
+typedef struct AADEQUE_PREFIX AADEQUE_T;
 
 /* Size to allocate for a struct aadeque of capacity cap. Used internally. */
 static inline size_t
-aadeque_sizeof(AADEQUE_SIZE_T cap) {
-	return sizeof(struct aadeque) + (cap - 1) * sizeof(AADEQUE_VALUE_T);
+AADEQUE_NAME(_sizeof)(AADEQUE_SIZE_T cap) {
+	return sizeof(AADEQUE_T) + (cap - 1) * sizeof(AADEQUE_VALUE_T);
 }
 
 /*
  * Convert external index to internal one. Used internally.
  *
+ * i must fulfil i >= 0 and i < length, otherwise the result is undefined.
  * i % cap == i & (cap - 1), since cap always is a power of 2.
  */
 static inline AADEQUE_SIZE_T
-aadeque_idx(struct aadeque *a, AADEQUE_SIZE_T i) {
-	return (a->off + i) & (a->cap - 1);
+AADEQUE_NAME(_idx)(AADEQUE_T *a, AADEQUE_SIZE_T i) {
+	AADEQUE_SIZE_T idx = a->off + i;
+	if (idx >= a->cap)
+		idx -= a->cap;
+	return idx;
 }
 
 /*
  * Creates an array of length len with undefined values.
  */
-static inline struct aadeque *
-aadeque_create(AADEQUE_SIZE_T len) {
-	AADEQUE_SIZE_T cap = AADEQUE_MIN_CAPACITY;
-	struct aadeque *a;
-	while (cap < len)
-		cap = cap << 1;
-	a = (struct aadeque *)AADEQUE_ALLOC(aadeque_sizeof(cap));
+static inline AADEQUE_T *
+AADEQUE_NAME(_create)(AADEQUE_SIZE_T len) {
+	AADEQUE_SIZE_T cap = len; //AADEQUE_MIN_CAPACITY;
+	AADEQUE_T *a;
+	//while (cap < len)
+	//	cap = cap << 1;
+	if (cap < AADEQUE_MIN_CAPACITY) cap = AADEQUE_MIN_CAPACITY;
+	a = (AADEQUE_T *)AADEQUE_ALLOC(AADEQUE_NAME(_sizeof)(cap));
 	if (!a) AADEQUE_OOM();
 	a->len = len;
 	a->off = 0;
@@ -85,24 +106,24 @@ aadeque_create(AADEQUE_SIZE_T len) {
 /*
  * Creates an empty array.
  */
-static inline struct aadeque *
-aadeque_create_empty(void) {
-	return aadeque_create(0);
+static inline AADEQUE_T *
+AADEQUE_NAME(_create_empty)(void) {
+	return AADEQUE_NAME(_create)(0);
 }
 
 /*
  * Frees the memory.
  */
 static inline void
-aadeque_destroy(struct aadeque *a) {
-	AADEQUE_FREE(a, aadeque_sizeof(a->cap));
+AADEQUE_NAME(_destroy)(AADEQUE_T *a) {
+	AADEQUE_FREE(a, AADEQUE_NAME(_sizeof)(a->cap));
 }
 
 /*
  * Returns the number of elements in the array.
  */
 static inline AADEQUE_SIZE_T
-aadeque_len(struct aadeque *a) {
+AADEQUE_NAME(_len)(AADEQUE_T *a) {
 	return a->len;
 }
 
@@ -111,8 +132,8 @@ aadeque_len(struct aadeque *a) {
  * checked.
  */
 static inline AADEQUE_VALUE_T
-aadeque_get(struct aadeque *a, AADEQUE_SIZE_T i) {
-	AADEQUE_SIZE_T pos = aadeque_idx(a, i);
+AADEQUE_NAME(_get)(AADEQUE_T *a, AADEQUE_SIZE_T i) {
+	AADEQUE_SIZE_T pos = AADEQUE_NAME(_idx)(a, i);
 	return a->els[pos];
 }
 
@@ -121,8 +142,8 @@ aadeque_get(struct aadeque *a, AADEQUE_SIZE_T i) {
  * checked.
  */
 static inline void
-aadeque_set(struct aadeque *a, AADEQUE_SIZE_T i, AADEQUE_VALUE_T value) {
-	AADEQUE_SIZE_T pos = aadeque_idx(a, i);
+AADEQUE_NAME(_set)(AADEQUE_T *a, AADEQUE_SIZE_T i, AADEQUE_VALUE_T value) {
+	AADEQUE_SIZE_T pos = AADEQUE_NAME(_idx)(a, i);
 	a->els[pos] = value;
 }
 
@@ -133,8 +154,8 @@ aadeque_set(struct aadeque *a, AADEQUE_SIZE_T i, AADEQUE_VALUE_T value) {
  * Used internally if AADEQUE_CLEAR_UNUSED_MEM is defined.
  */
 static inline void
-aadeque_clear(struct aadeque *a, AADEQUE_SIZE_T i, AADEQUE_SIZE_T n) {
-	if (aadeque_idx(a, i) > aadeque_idx(a, i + n - 1)) {
+AADEQUE_NAME(_clear)(AADEQUE_T *a, AADEQUE_SIZE_T i, AADEQUE_SIZE_T n) {
+	if (AADEQUE_NAME(_idx)(a, i) > AADEQUE_NAME(_idx)(a, i + n - 1)) {
 		/*
 		 * It warps. There are two parts to clear.
 		 *
@@ -143,9 +164,9 @@ aadeque_clear(struct aadeque *a, AADEQUE_SIZE_T i, AADEQUE_SIZE_T n) {
 		 *   |--->      o---|
 		 */
 		memset(&a->els[0], 0,
-		       sizeof(AADEQUE_VALUE_T) * aadeque_idx(a, n + i));
-		memset(&a->els[aadeque_idx(a, i)], 0,
-		       sizeof(AADEQUE_VALUE_T) * (a->cap - aadeque_idx(a, i)));
+		       sizeof(AADEQUE_VALUE_T) * AADEQUE_NAME(_idx)(a, n + i));
+		memset(&a->els[AADEQUE_NAME(_idx)(a, i)], 0,
+		       sizeof(AADEQUE_VALUE_T) * (a->cap - AADEQUE_NAME(_idx)(a, i)));
 	}
 	else {
 		/*
@@ -155,27 +176,27 @@ aadeque_clear(struct aadeque *a, AADEQUE_SIZE_T i, AADEQUE_SIZE_T n) {
 		 *    /   /     /    /
 		 *   |   o----->    |
 		 */
-		memset(&a->els[aadeque_idx(a, i)], 0, sizeof(AADEQUE_VALUE_T) * n);
+		memset(&a->els[AADEQUE_NAME(_idx)(a, i)], 0, sizeof(AADEQUE_VALUE_T) * n);
 	}
 }
 
 /*
  * Clones an array deque, preserving the internal memory layout.
  */
-static inline struct aadeque *
-aadeque_clone(struct aadeque *a) {
-	size_t sz = aadeque_sizeof(a->cap);
+static inline AADEQUE_T *
+AADEQUE_NAME(_clone)(AADEQUE_T *a) {
+	size_t sz = AADEQUE_NAME(_sizeof)(a->cap);
 	void *clone = AADEQUE_ALLOC(sz);
 	if (!clone) AADEQUE_OOM();
-	return (struct aadeque *)memcpy(clone, a, sz);
+	return (AADEQUE_T *)memcpy(clone, a, sz);
 }
 
 /*
  * Create an struct aadeque from the n values pointed to by array.
  */
-static inline struct aadeque *
-aadeque_from_array(AADEQUE_VALUE_T *array, AADEQUE_SIZE_T n) {
-	struct aadeque *a = aadeque_create(n);
+static inline AADEQUE_T *
+AADEQUE_NAME(_from_array)(AADEQUE_VALUE_T *array, AADEQUE_SIZE_T n) {
+	AADEQUE_T *a = AADEQUE_NAME(_create)(n);
 	memcpy(a->els, array, sizeof(AADEQUE_VALUE_T) * n);
 	return a;
 }
@@ -186,12 +207,13 @@ aadeque_from_array(AADEQUE_VALUE_T *array, AADEQUE_SIZE_T n) {
  * counterparts in array, 0 otherwise.
  */
 static inline int
-aadeque_eq_array(struct aadeque *a, AADEQUE_VALUE_T *array, AADEQUE_SIZE_T n) {
+AADEQUE_NAME(_eq_array)(AADEQUE_T *a, AADEQUE_VALUE_T *array,
+                        AADEQUE_SIZE_T n) {
 	AADEQUE_SIZE_T i;
 	if (a->len != n)
 		return 0;
 	for (i = 0; i < n; i++)
-		if (aadeque_get(a, i) != array[i])
+		if (AADEQUE_NAME(_get)(a, i) != array[i])
 			return 0;
 	return 1;
 }
@@ -206,8 +228,8 @@ aadeque_eq_array(struct aadeque *a, AADEQUE_VALUE_T *array, AADEQUE_SIZE_T n) {
 /*
  * Reserve space for at least n more elements
  */
-static inline struct aadeque *
-aadeque_reserve(struct aadeque *a, AADEQUE_SIZE_T n) {
+static inline AADEQUE_T *
+AADEQUE_NAME(_reserve)(AADEQUE_T *a, AADEQUE_SIZE_T n) {
 	if (a->cap < a->len + n) {
 		/* calulate and set new capacity */
 		AADEQUE_SIZE_T oldcap = a->cap;
@@ -215,9 +237,9 @@ aadeque_reserve(struct aadeque *a, AADEQUE_SIZE_T n) {
 			a->cap = a->cap << 1;
 		} while (a->cap < a->len + n);
 		/* allocate more mem */
-		a = (struct aadeque *)AADEQUE_REALLOC(a,
-		                                      aadeque_sizeof(a->cap),
-		                                      aadeque_sizeof(oldcap));
+		a = (AADEQUE_T *)AADEQUE_REALLOC(a,
+		                                 AADEQUE_NAME(_sizeof)(a->cap),
+		                                 AADEQUE_NAME(_sizeof)(oldcap));
 		if (!a) AADEQUE_OOM();
 		/* adjust content to the increased capacity */
 		if (a->off + a->len > oldcap) {
@@ -249,8 +271,8 @@ aadeque_reserve(struct aadeque *a, AADEQUE_SIZE_T n) {
  * Reduces the capacity to some number larger than or equal to mincap. Mincap
  * must be at least as large as the number of elements in the deque.
  */
-static inline struct aadeque *
-aadeque_compact_to(struct aadeque *a, AADEQUE_SIZE_T mincap) {
+static inline AADEQUE_T *
+AADEQUE_NAME(_compact_to)(AADEQUE_T *a, AADEQUE_SIZE_T mincap) {
 	AADEQUE_SIZE_T doublemincap = 	mincap << 1;
 	if (a->cap >= doublemincap && a->cap > AADEQUE_MIN_CAPACITY) {
 		/*
@@ -319,9 +341,9 @@ aadeque_compact_to(struct aadeque *a, AADEQUE_SIZE_T mincap) {
 			 */
 		}
 		/* Free the unused, second half, between cap and oldcap. */
-		a = (struct aadeque *)AADEQUE_REALLOC(a,
-		                                      aadeque_sizeof(a->cap),
-		                                      aadeque_sizeof(oldcap));
+		a = (AADEQUE_T *)AADEQUE_REALLOC(a,
+		                                 AADEQUE_NAME(_sizeof)(a->cap),
+		                                 AADEQUE_NAME(_sizeof)(oldcap));
 		if (!a) AADEQUE_OOM();
 	}
 	return a;
@@ -335,9 +357,9 @@ aadeque_compact_to(struct aadeque *a, AADEQUE_SIZE_T mincap) {
  * trigger buffer resizing on every operation, thus keeping the insertions and
  * deletions at O(1) amortized.
  */
-static inline struct aadeque *
-aadeque_compact_some(struct aadeque *a) {
-	return aadeque_compact_to(a, a->len << 1);
+static inline AADEQUE_T *
+AADEQUE_NAME(_compact_some)(AADEQUE_T *a) {
+	return AADEQUE_NAME(_compact_to)(a, a->len << 1);
 }
 
 /*----------------------------------------------------------------------------
@@ -353,9 +375,9 @@ aadeque_compact_some(struct aadeque *a) {
 /*
  * Inserts n undefined values after the last element.
  */
-static inline struct aadeque *
-aadeque_make_space_after(struct aadeque *a, AADEQUE_SIZE_T n) {
-	a = aadeque_reserve(a, n);
+static inline AADEQUE_T *
+AADEQUE_NAME(_make_space_after)(AADEQUE_T *a, AADEQUE_SIZE_T n) {
+	a = AADEQUE_NAME(_reserve)(a, n);
 	a->len += n;
 	return a;
 }
@@ -363,10 +385,10 @@ aadeque_make_space_after(struct aadeque *a, AADEQUE_SIZE_T n) {
 /*
  * Inserts n undefined values before the first element.
  */
-static inline struct aadeque *
-aadeque_make_space_before(struct aadeque *a, AADEQUE_SIZE_T n) {
-	a = aadeque_reserve(a, n);
-	a->off = aadeque_idx(a, a->cap - n);
+static inline AADEQUE_T *
+AADEQUE_NAME(_make_space_before)(AADEQUE_T *a, AADEQUE_SIZE_T n) {
+	a = AADEQUE_NAME(_reserve)(a, n);
+	a->off = AADEQUE_NAME(_idx)(a, a->cap - n);
 	a->len += n;
 	return a;
 }
@@ -383,30 +405,30 @@ aadeque_make_space_before(struct aadeque *a, AADEQUE_SIZE_T n) {
  * If length + offset is greater than the length of a, the behaviour is
  * undefined. No check is performed on *length* and *offset*.
  */
-static inline struct aadeque *
-aadeque_crop(struct aadeque *a, AADEQUE_SIZE_T offset, AADEQUE_SIZE_T length) {
+static inline AADEQUE_T *
+AADEQUE_NAME(_crop)(AADEQUE_T *a, AADEQUE_SIZE_T offset, AADEQUE_SIZE_T length) {
 	#ifdef AADEQUE_CLEAR_UNUSED_MEM
-	aadeque_clear(a, offset + length, a->len - length);
+	AADEQUE_NAME(_clear)(a, offset + length, a->len - length);
 	#endif
-	a->off = aadeque_idx(a, offset);
+	a->off = AADEQUE_NAME(_idx)(a, offset);
 	a->len = length;
-	return aadeque_compact_some(a);
+	return AADEQUE_NAME(_compact_some)(a);
 }
 
 /*
  * Deletes the last n elements.
  */
-static inline struct aadeque *
-aadeque_delete_last_n(struct aadeque *a, AADEQUE_SIZE_T n) {
-	return aadeque_crop(a, 0, a->len - n);
+static inline AADEQUE_T *
+AADEQUE_NAME(_delete_last_n)(AADEQUE_T *a, AADEQUE_SIZE_T n) {
+	return AADEQUE_NAME(_crop)(a, 0, a->len - n);
 }
 
 /*
  * Deletes the first n elements.
  */
-static inline struct aadeque *
-aadeque_delete_first_n(struct aadeque *a, AADEQUE_SIZE_T n) {
-	return aadeque_crop(a, n, a->len - n);
+static inline AADEQUE_T *
+AADEQUE_NAME(_delete_first_n)(AADEQUE_T *a, AADEQUE_SIZE_T n) {
+	return AADEQUE_NAME(_crop)(a, n, a->len - n);
 }
 
 /*---------------------------------------------------------------------------
@@ -419,8 +441,8 @@ aadeque_delete_first_n(struct aadeque *a, AADEQUE_SIZE_T n) {
  * May change aptr if it needs to be reallocated.
  */
 static inline void
-aadeque_unshift(struct aadeque **aptr, AADEQUE_VALUE_T value) {
-	*aptr = aadeque_make_space_before(*aptr, 1);
+AADEQUE_NAME(_unshift)(AADEQUE_T **aptr, AADEQUE_VALUE_T value) {
+	*aptr = AADEQUE_NAME(_make_space_before)(*aptr, 1);
 	(*aptr)->els[(*aptr)->off] = value;
 }
 
@@ -429,9 +451,9 @@ aadeque_unshift(struct aadeque **aptr, AADEQUE_VALUE_T value) {
  * May change aptr if it needs to be reallocated.
 */
 static inline AADEQUE_VALUE_T
-aadeque_shift(struct aadeque **aptr) {
+AADEQUE_NAME(_shift)(AADEQUE_T **aptr) {
 	AADEQUE_VALUE_T value = (*aptr)->els[(*aptr)->off];
-	*aptr = aadeque_crop(*aptr, 1, (*aptr)->len - 1);
+	*aptr = AADEQUE_NAME(_crop)(*aptr, 1, (*aptr)->len - 1);
 	return value;
 }
 
@@ -440,9 +462,9 @@ aadeque_shift(struct aadeque **aptr) {
  * May change aptr if it needs to be reallocated.
  */
 static inline void
-aadeque_push(struct aadeque **aptr, AADEQUE_VALUE_T value) {
-	*aptr = aadeque_make_space_after(*aptr, 1);
-	(*aptr)->els[aadeque_idx(*aptr, (*aptr)->len - 1)] = value;
+AADEQUE_NAME(_push)(AADEQUE_T **aptr, AADEQUE_VALUE_T value) {
+	*aptr = AADEQUE_NAME(_make_space_after)(*aptr, 1);
+	(*aptr)->els[AADEQUE_NAME(_idx)(*aptr, (*aptr)->len - 1)] = value;
 }
 
 /*
@@ -450,10 +472,10 @@ aadeque_push(struct aadeque **aptr, AADEQUE_VALUE_T value) {
  * May change aptr if it needs to be reallocated.
  */
 static inline AADEQUE_VALUE_T
-aadeque_pop(struct aadeque **aptr) {
+AADEQUE_NAME(_pop)(AADEQUE_T **aptr) {
 	AADEQUE_VALUE_T value =
-		(*aptr)->els[aadeque_idx(*aptr, (*aptr)->len - 1)];
-	*aptr = aadeque_crop(*aptr, 0, (*aptr)->len - 1);
+		(*aptr)->els[AADEQUE_NAME(_idx)(*aptr, (*aptr)->len - 1)];
+	*aptr = AADEQUE_NAME(_crop)(*aptr, 0, (*aptr)->len - 1);
 	return value;
 }
 
@@ -464,26 +486,26 @@ aadeque_pop(struct aadeque **aptr) {
 /*
  * Appends all elements of s2 to a1 and returns the (possibly reallocated) a1.
  */
-static inline struct aadeque *
-aadeque_append(struct aadeque *a1, struct aadeque *a2) {
+static inline AADEQUE_T *
+AADEQUE_NAME(_append)(AADEQUE_T *a1, AADEQUE_T *a2) {
 	AADEQUE_SIZE_T i = a1->len, j;
-	a1 = aadeque_make_space_after(a1, a2->len);
+	a1 = AADEQUE_NAME(_make_space_after)(a1, a2->len);
 	/* TODO: copy using memcpy instead of the loop */
 	for (j = 0; j < a2->len; j++)
-		aadeque_set(a1, i++, aadeque_get(a2, j));
+		AADEQUE_NAME(_set)(a1, i++, AADEQUE_NAME(_get)(a2, j));
 	return a1;
 }
 
 /*
  * Prepends all elements of s2 to a1 and returns the (possibly reallocated) a1.
  */
-static inline struct aadeque *
-aadeque_prepend(struct aadeque *a1, struct aadeque *a2) {
+static inline AADEQUE_T *
+AADEQUE_NAME(_prepend)(AADEQUE_T *a1, AADEQUE_T *a2) {
 	AADEQUE_SIZE_T i = 0, j;
-	a1 = aadeque_make_space_before(a1, a2->len);
+	a1 = AADEQUE_NAME(_make_space_before)(a1, a2->len);
 	/* TODO: copy using memcpy instead of the loop */
 	for (j = 0; j < a2->len; j++)
-		aadeque_set(a1, i++, aadeque_get(a2, j));
+		AADEQUE_NAME(_set)(a1, i++, AADEQUE_NAME(_get)(a2, j));
 	return a1;
 }
 
@@ -499,14 +521,14 @@ aadeque_prepend(struct aadeque *a1, struct aadeque *a2) {
  *
  * See also *aadeque_crop()*.
  */
-static inline struct aadeque *
-aadeque_slice(struct aadeque *a, AADEQUE_SIZE_T offset, AADEQUE_SIZE_T length) {
-	struct aadeque *b = aadeque_create(length);
+static inline AADEQUE_T *
+AADEQUE_NAME(_slice)(AADEQUE_T *a, AADEQUE_SIZE_T offset, AADEQUE_SIZE_T length) {
+	AADEQUE_T *b = AADEQUE_NAME(_create)(length);
 	/* TODO: use memcpy instead of the loop */
 	AADEQUE_SIZE_T i;
 	for (i = 0; i < length; i++) {
-		AADEQUE_VALUE_T x = aadeque_get(a, i + offset);
-		aadeque_set(b, i, x);
+		AADEQUE_VALUE_T x = AADEQUE_NAME(_get)(a, i + offset);
+		AADEQUE_NAME(_set)(b, i, x);
 	}
 	return b;
 }
@@ -523,9 +545,9 @@ aadeque_slice(struct aadeque *a, AADEQUE_SIZE_T offset, AADEQUE_SIZE_T length) {
  * Returns the unmodified pointer if no memory could be free'd. Otherwise, frees
  * the old one and returns a pointer to the new, resized allocation.
  */
-static inline struct aadeque *
-aadeque_compact(struct aadeque *a) {
-	return aadeque_compact_to(a, a->len);
+static inline AADEQUE_T *
+AADEQUE_NAME(_compact)(AADEQUE_T *a) {
+	return AADEQUE_NAME(_compact_to)(a, a->len);
 }
 
 /*
@@ -534,7 +556,7 @@ aadeque_compact(struct aadeque *a) {
  * for raw arrays (such as qsort).
  */
 static inline void
-aadeque_make_contiguous_unordered(struct aadeque *a) {
+AADEQUE_NAME(_make_contiguous_unordered)(AADEQUE_T *a) {
 	if (a->off + a->len > a->cap) {
 		/*
 		 * It warps around. Just move the parts together in the wrong order.
